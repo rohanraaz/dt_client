@@ -100,6 +100,33 @@ const request = async (req, res) => {
             }
             
             // console.log(specResponseList, seq)
+            if(specResponseList == undefined) {
+                console.log("mismatch in history");
+                const mismatch = {
+                    type: 'MIS_MATCH',
+                    view: maj_response.view,
+                    seq: maj_response.seq
+                };
+
+                cleardata(responses);
+
+                for (IP in nodeIPs) {
+                    const url = `http://${nodeIPs[IP]}/request`;
+                    const body = mismatch;
+                    try {
+                        await axios.post(url, body, { timeout: 5000 });
+                    }
+                    catch (error) {
+                        if (error.code === 'ECONNABORTED') {
+                            console.log("node " + IP + " request timed out");
+                        } else {
+                            console.log("node " + IP + " not responding");
+                        }
+                    }
+                }
+
+                res.json("Query failed due to mismatch in history");
+            }
             let maj_response = specResponseList[0];
             for (key in specResponseList) {
                 if (specResponseList[key].reply == majority) {
