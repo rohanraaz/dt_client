@@ -25,7 +25,7 @@ let nodeIPs = {
 };
 
 // let clientID = "localhost:8000";
-let clientID = "localhost:8000"
+let clientID = "192.168.25.110:8000"
 
 let primaryNode = 0;
 
