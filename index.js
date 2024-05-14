@@ -32,7 +32,7 @@ let primaryNode = 0;
 // stores responses for every sequence number in the current view
 let responses = {};
 
-let f = 1
+let f = 2
 
 let total_nodes = 3 * f + 1
 // total_nodes = 2
