@@ -98,66 +98,9 @@ const request = async (req, res) => {
                     majority = key;
                 }
             }
-            
+
             // console.log(specResponseList, seq)
-            if(specResponseList == undefined) {
-                console.log("mismatch in history");
-                const mismatch = {
-                    type: 'MIS_MATCH',
-                    view: maj_response.view,
-                    seq: maj_response.seq
-                };
-
-                cleardata(responses);
-
-                for (IP in nodeIPs) {
-                    const url = `http://${nodeIPs[IP]}/request`;
-                    const body = mismatch;
-                    try {
-                        await axios.post(url, body, { timeout: 5000 });
-                    }
-                    catch (error) {
-                        if (error.code === 'ECONNABORTED') {
-                            console.log("node " + IP + " request timed out");
-                        } else {
-                            console.log("node " + IP + " not responding");
-                        }
-                    }
-                }
-
-                res.json("Query failed due to mismatch in history");
-            }
-            let maj_response = specResponseList[0];
-            for (key in specResponseList) {
-                if (specResponseList[key].reply == majority) {
-                    maj_response = specResponseList[key];
-                    break;
-                }
-            }
-
-            console.log("max freq is " + maxfreq);
-
-            // check if there is a mistmatch in the history of the servers
-            let unique_history_list = []
-
-            for (key in specResponseList) {
-                // if specResponseList[key].history not in unique_history_list)
-                let found = false;
-                for (key2 in unique_history_list) {
-                    if (listComparision(specResponseList[key].history, unique_history_list[key2])) {
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found) {
-                    unique_history_list.push(specResponseList[key].history);
-                }
-            }
-
-            if (unique_history_list.length > 1) {
-                // send mismatch to all nodes
-                // !!!!!!!!!!! < code here > !!!!!!!!!!!
+            if (specResponseList == undefined) {
                 console.log("mismatch in history");
                 const mismatch = {
                     type: 'MIS_MATCH',
@@ -185,36 +128,51 @@ const request = async (req, res) => {
                 res.json("Query failed due to mismatch in history");
             }
             else {
-
-                if (maxfreq == total_nodes) {
-                    res.json("Query submitted full match");
+                let maj_response = specResponseList[0];
+                for (key in specResponseList) {
+                    if (specResponseList[key].reply == majority) {
+                        maj_response = specResponseList[key];
+                        break;
+                    }
                 }
-                else if (maxfreq >= 2 * f + 1) {
-                    // create a cc and send to all servers
 
-                    const commit_cert = {
-                        type: 'COMMIT_CERTIFICATE',
-                        client: clientID,
+                console.log("max freq is " + maxfreq);
+
+                // check if there is a mistmatch in the history of the servers
+                let unique_history_list = []
+
+                for (key in specResponseList) {
+                    // if specResponseList[key].history not in unique_history_list)
+                    let found = false;
+                    for (key2 in unique_history_list) {
+                        if (listComparision(specResponseList[key].history, unique_history_list[key2])) {
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found) {
+                        unique_history_list.push(specResponseList[key].history);
+                    }
+                }
+
+                if (unique_history_list.length > 1) {
+                    // send mismatch to all nodes
+                    // !!!!!!!!!!! < code here > !!!!!!!!!!!
+                    console.log("mismatch in history");
+                    const mismatch = {
+                        type: 'MIS_MATCH',
                         view: maj_response.view,
-                        seq: maj_response.seq,
-                        OR: maj_response.OR,
-                        last_message: majority,
-                        history: unique_history_list[0]
+                        seq: maj_response.seq
                     };
 
-                    // send the commit certificate to all the servers which have sent the spec response
-
-                    let local_commiit_replies = [];
+                    cleardata(responses);
 
                     for (IP in nodeIPs) {
                         const url = `http://${nodeIPs[IP]}/request`;
-                        const body = commit_cert;
-
-                        console.log("sending cc to " + IP);
-
+                        const body = mismatch;
                         try {
-                            const response = await axios.post(url, body, { timeout: 5000 });
-                            local_commiit_replies.push(response.data);
+                            await axios.post(url, body, { timeout: 5000 });
                         }
                         catch (error) {
                             if (error.code === 'ECONNABORTED') {
@@ -225,44 +183,88 @@ const request = async (req, res) => {
                         }
                     }
 
-                    console.log(local_commiit_replies.length);
-
-                    if (local_commiit_replies.length >= 2 * f + 1) {
-                        res.json("Query submitted sent cc");
-                    }
-                    else {
-                        res.json("sent cc but < 2*f+1 replies received");
-                    }
-
-                    // res.send("this is issue probably")
+                    res.json("Query failed due to mismatch in history");
                 }
                 else {
-                    // resend the query to all the servers
-                    const mismatch = {
-                        type: 'MIS_MATCH',
-                        view: maj_response.view,
-                        seq: maj_response.seq,
-                        lets: "see"
-                    };
 
-                    cleardata(responses);
-    
-                    for (IP in nodeIPs) {
-                        const url = `http://${nodeIPs[IP]}/request`;
-                        const body = mismatch;
-                        try {
-                            console.log("sending mismatch to " + IP)
-                            await axios.post(url, body);
-                        }
-                        catch (error) {
-                            if (error.code === 'ECONNABORTED') {
-                                console.log("node " + IP + " request timed out for sending mismatch");
-                            } else {
-                                console.log("node " + IP + " not responding");
+                    if (maxfreq == total_nodes) {
+                        res.json("Query submitted full match");
+                    }
+                    else if (maxfreq >= 2 * f + 1) {
+                        // create a cc and send to all servers
+
+                        const commit_cert = {
+                            type: 'COMMIT_CERTIFICATE',
+                            client: clientID,
+                            view: maj_response.view,
+                            seq: maj_response.seq,
+                            OR: maj_response.OR,
+                            last_message: majority,
+                            history: unique_history_list[0]
+                        };
+
+                        // send the commit certificate to all the servers which have sent the spec response
+
+                        let local_commiit_replies = [];
+
+                        for (IP in nodeIPs) {
+                            const url = `http://${nodeIPs[IP]}/request`;
+                            const body = commit_cert;
+
+                            console.log("sending cc to " + IP);
+
+                            try {
+                                const response = await axios.post(url, body, { timeout: 5000 });
+                                local_commiit_replies.push(response.data);
+                            }
+                            catch (error) {
+                                if (error.code === 'ECONNABORTED') {
+                                    console.log("node " + IP + " request timed out");
+                                } else {
+                                    console.log("node " + IP + " not responding");
+                                }
                             }
                         }
+
+                        console.log(local_commiit_replies.length);
+
+                        if (local_commiit_replies.length >= 2 * f + 1) {
+                            res.json("Query submitted sent cc");
+                        }
+                        else {
+                            res.json("sent cc but < 2*f+1 replies received");
+                        }
+
+                        // res.send("this is issue probably")
                     }
-                    res.json("Query failed");
+                    else {
+                        // resend the query to all the servers
+                        const mismatch = {
+                            type: 'MIS_MATCH',
+                            view: maj_response.view,
+                            seq: maj_response.seq,
+                            lets: "see"
+                        };
+
+                        cleardata(responses);
+
+                        for (IP in nodeIPs) {
+                            const url = `http://${nodeIPs[IP]}/request`;
+                            const body = mismatch;
+                            try {
+                                console.log("sending mismatch to " + IP)
+                                await axios.post(url, body);
+                            }
+                            catch (error) {
+                                if (error.code === 'ECONNABORTED') {
+                                    console.log("node " + IP + " request timed out for sending mismatch");
+                                } else {
+                                    console.log("node " + IP + " not responding");
+                                }
+                            }
+                        }
+                        res.json("Query failed");
+                    }
                 }
             }
         }, 5000);
